@@ -12,14 +12,16 @@ module.exports = (req, res, next) => {
         req._readableState.endEmitted = false;
         req._on_ = req.on;
         const callbacks = [];
-        req.on = function(type, callback){
+        req.on = (type, callback) => {
             if (type === 'data') {
                 process.nextTick(() => {
                     callback(req._buffer_);
-                    process.nextTick(() => {
-                        callbacks.forEach(cb => cb());
-                        callbacks.length = 0;
-                    });
+                    if (callbacks.length > 0) {
+                        process.nextTick(() => {
+                            callbacks.forEach(cb => cb());
+                            callbacks.length = 0;
+                        });
+                    }
                 });
             } else if (type === 'end') {
                 if ('end' in cacheEvent) {
@@ -30,7 +32,7 @@ module.exports = (req, res, next) => {
                     callback(cacheEvent[type]);
                 });
             }
-            return this;
+            return req;
         };
         next();
     });
