@@ -1,0 +1,22 @@
+{
+  "name": "coexist-parser-proxy",
+  "version": "1.0.0",
+  "description": "Resolve the coexistent fault between body-parser and http-proxy",
+  "main": "index.js",
+  "scripts": {},
+  "keywords": [
+    "coexist",
+    "parser",
+    "proxy"
+  ],
+  "author": "stuart_zhang",
+  "repository": {
+    "url": "https://github.com/stuartZhang/coexist-parser-proxy.git",
+    "type": "git"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^6.8.0",
+    "eslint-config-minxing": "^1.1.35"
+  }
+}
