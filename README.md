@@ -6,6 +6,10 @@ Resolve the coexistent fault between body-parser and http-proxy.
 
 An Express.js middleware is exported. As a result, all that you need is to import and use it before hooking body-parser and http-proxy middleware.
 
+```shell
+npm i -S coexist-parser-proxy
+```
+
 ```javascript
 const middleware = require('coexist-parser-proxy');
 const express = require('express');
