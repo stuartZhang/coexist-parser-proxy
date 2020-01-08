@@ -9,7 +9,9 @@ module.exports = (req, res, next) => {
     req.once('error', otherEventHandle('error'));
     req.once('end', otherEventHandle('end'));
     req.once('end', () => {
-        req._readableState.endEmitted = false;
+        process.nextTick(() => {
+            req._readableState.endEmitted = false;
+        });
         req._on_ = req.on;
         const callbacks = [];
         req.on = (type, callback) => {
