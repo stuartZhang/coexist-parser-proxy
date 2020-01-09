@@ -9,9 +9,6 @@ module.exports = (req, res, next) => {
     req.once('error', otherEventHandle('error'));
     req.once('end', otherEventHandle('end'));
     req.once('end', () => {
-        process.nextTick(() => {
-            req._readableState.endEmitted = false;
-        });
         req._on_ = req.on;
         const callbacks = [];
         req.on = (type, callback) => {
@@ -36,7 +33,10 @@ module.exports = (req, res, next) => {
             }
             return req;
         };
-        next();
+        process.nextTick(() => {
+            req._readableState.endEmitted = false;
+            next();
+        });
     });
     req.once('data', chunk => {
         req._buffer_ = Buffer.concat([req._buffer_, chunk]);
