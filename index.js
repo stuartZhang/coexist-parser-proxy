@@ -1,44 +1,78 @@
+const co = require('co');
 module.exports = (req, res, next) => {
-    req._buffer_ = Buffer.alloc(0);
-    const cacheEvent = {};
-    const otherEventHandle = type => event => {
-        cacheEvent[type] = event;
+    //
+    const cacheEvents = {
+        aborted: [],
+        close: [],
+        error: [],
+        end: [],
+        data: []
     };
-    req.once('aborted', otherEventHandle('aborted'));
-    req.once('close', otherEventHandle('close'));
-    req.once('error', otherEventHandle('error'));
-    req.once('end', otherEventHandle('end'));
-    req.once('end', () => {
+    const eventHandleBuild = type => event => {
+        cacheEvents[type].push(event);
+    };
+    //
+    const onAborted = eventHandleBuild('aborted');
+    const onClose = eventHandleBuild('close');
+    const onError = eventHandleBuild('error');
+    const onData = eventHandleBuild('data');
+    const onEnd = event => {
+        req.off('data', onData);
+        req.off('aborted', onAborted);
+        req.off('close', onClose);
+        req.off('error', onError);
+        req.off('end', onEnd);
+        //
+        cacheEvents.end.push(event);
+        //
+        const waitTick = () => new Promise(resolve => process.nextTick(resolve));
+        const endCallbacks = [];
         req._on_ = req.on;
-        const callbacks = [];
-        req.on = (type, callback) => {
+        req.on = req.addListener = (type, callback) => {
             if (type === 'data') {
-                process.nextTick(() => {
-                    callback(req._buffer_);
-                    if (callbacks.length > 0) {
-                        process.nextTick(() => {
-                            callbacks.forEach(cb => cb());
-                            callbacks.length = 0;
-                        });
+                process.nextTick(co.wrap(function *(){
+                    for (const dataEvent of cacheEvents.data) {
+                        callback(dataEvent);
+                        yield waitTick();
                     }
-                });
+                    for (const endCallback of endCallbacks) {
+                        for (const endEvent of cacheEvents.end) {
+                            endCallback(endEvent);
+                            yield waitTick();
+                        }
+                    }
+                }));
             } else if (type === 'end') {
-                if ('end' in cacheEvent) {
-                    callbacks.push(() => callback(cacheEvent.end));
-                }
-            } else if (type in cacheEvent) {
-                process.nextTick(() => {
-                    callback(cacheEvent[type]);
-                });
+                endCallbacks.push(callback);
+            } else if (type in cacheEvents) {
+                process.nextTick(co.wrap(function *(){
+                    for (const event of cacheEvents[type]) {
+                        callback(event);
+                        yield waitTick();
+                    }
+                }));
             }
             return req;
+        };
+        req._off_ = req.off;
+        req.off = req.removeListener = (type, callback) => {
+            if (callback == null) {
+                cacheEvents[type].length = 0;
+            } else {
+                const index = cacheEvents[type].findIndex(cb => cb === callback);
+                if (~index) {
+                    cacheEvents[type].splice(index, 1);
+                }
+            }
         };
         process.nextTick(() => {
             req._readableState.endEmitted = false;
             next();
         });
-    });
-    req.once('data', chunk => {
-        req._buffer_ = Buffer.concat([req._buffer_, chunk]);
-    });
+    };
+    req.on('aborted', onAborted);
+    req.on('close', onClose);
+    req.once('error', onError);
+    req.once('end', onEnd);
+    req.on('data', onData);
 };
