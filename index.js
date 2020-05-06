@@ -17,6 +17,9 @@ module.exports = (req, res, next) => {
     const onError = eventHandleBuild('error');
     const onData = eventHandleBuild('data');
     const onEnd = event => {
+        if (req.off == null) {
+            req.off = req.removeListener;
+        }
         req.off('data', onData);
         req.off('aborted', onAborted);
         req.off('close', onClose);
