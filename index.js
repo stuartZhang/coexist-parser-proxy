@@ -30,7 +30,9 @@ module.exports = (req, res, next) => {
         //
         const waitTick = () => new Promise(resolve => process.nextTick(resolve));
         const endCallbacks = [];
-        req._on_ = req.on;
+        req._on_ = req.on || req.addListener;
+        req._off_ = req.off || req.removeListener;
+        //
         req.on = req.addListener = (type, callback) => {
             if (type === 'data') {
                 process.nextTick(co.wrap(function *(){
@@ -54,18 +56,25 @@ module.exports = (req, res, next) => {
                         yield waitTick();
                     }
                 }));
+            } else {
+                console.warn(`[coexist-parser-proxy][addListener]不被支持的事件类型 "${type}"`);
+                req._on_(type, callback);
             }
             return req;
         };
-        req._off_ = req.off;
         req.off = req.removeListener = (type, callback) => {
-            if (callback == null) {
-                cacheEvents[type].length = 0;
-            } else {
-                const index = cacheEvents[type].findIndex(cb => cb === callback);
-                if (~index) {
-                    cacheEvents[type].splice(index, 1);
+            if (cacheEvents[type]) {
+                if (callback == null) {
+                    cacheEvents[type].length = 0;
+                } else {
+                    const index = cacheEvents[type].findIndex(cb => cb === callback);
+                    if (~index) {
+                        cacheEvents[type].splice(index, 1);
+                    }
                 }
+            } else {
+                console.warn(`[coexist-parser-proxy][removeListener]不被支持的事件类型 "${type}"`);
+                req._off_(type, callback);
             }
         };
         process.nextTick(() => {

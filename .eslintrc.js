@@ -4,6 +4,7 @@ module.exports = {
     ],
     rules: {
         'no-param-reassign': 'off',
-        'callback-return': 'off'
+        'callback-return': 'off',
+        'no-console': 'off'
     }
 };
