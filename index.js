@@ -47,7 +47,7 @@ module.exports = (req, res, next) => {
                         }
                     }
                 }));
-            } else if (type === 'end') {
+            } else if (~['end', 'readable'].indexOf(type)) {
                 endCallbacks.push(callback);
             } else if (type in cacheEvents) {
                 process.nextTick(co.wrap(function *(){
